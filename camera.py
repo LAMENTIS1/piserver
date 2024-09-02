@@ -1,4 +1,3 @@
-# camera.py
 import cv2 as cv
 import time
 from datetime import datetime
@@ -43,4 +42,4 @@ class VideoCamera(object):
             return None
         frame = self.flip_if_needed(frame)  # Flip the frame if needed
         today_date = datetime.now().strftime("%m%d%Y-%H%M%S")  # Get current time
-        cv.imwrite(str(self.photo_string + "_" + today_date + self.file_type), frame)
+        cv.imwrite
