@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Camera Feed</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <h1>Camera Feed</h1>
-    <video id="video" autoplay style="width: 100%;"></video>
+    <video id="video" autoplay></video>
     <script>
         const video = document.getElementById('video');
-        const serverUrl = 'http://<server_ip>:5000/video_feed';
+        const serverUrl = 'https://piserver-i952.onrender.com/video_feed';  // Updated URL
 
-        // Access the device camera
         navigator.mediaDevices.getUserMedia({ video: true })
             .then(stream => {
                 video.srcObject = stream;
