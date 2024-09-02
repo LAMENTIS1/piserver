@@ -3,5 +3,6 @@ opencv-python
 imutils
 numpy
 flask-cors
+flask-socketio
 gunicorn 
 
