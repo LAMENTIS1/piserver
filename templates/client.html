@@ -17,13 +17,17 @@
         const servers = null; // Use default STUN/TURN servers
 
         socket.on('connect', () => {
+            console.log('Connected to signaling server');
             socket.emit('join', { id: socket.id });
         });
 
         socket.on('offer', async (data) => {
+            console.log('Received offer:', data);
             if (data.to !== socket.id) return;
+
             peerConnection = new RTCPeerConnection(servers);
             peerConnection.ontrack = (event) => {
+                console.log('Received remote stream');
                 remoteVideo.srcObject = event.streams[0];
             };
             peerConnection.onicecandidate = (event) => {
@@ -44,11 +48,13 @@
         });
 
         socket.on('answer', async (data) => {
+            console.log('Received answer:', data);
             if (data.to !== socket.id) return;
             await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
         });
 
         socket.on('candidate', async (data) => {
+            console.log('Received ICE candidate:', data);
             if (data.to !== socket.id) return;
             await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
         });
