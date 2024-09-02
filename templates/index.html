@@ -3,33 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Feed</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>WebRTC Streamer</title>
 </head>
 <body>
-    <h1>Camera Feed</h1>
-    <video id="video" autoplay></video>
+    <h1>WebRTC Streamer</h1>
+    <video id="localVideo" autoplay></video>
+    <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
     <script>
-        const video = document.getElementById('video');
-        const serverUrl = '/video_feed';  // Relative URL for the server endpoint
+        const socket = io();
 
-        navigator.mediaDevices.getUserMedia({ video: true })
+        let localStream;
+        let peerConnection;
+        const servers = null; // Use default STUN/TURN servers
+        const constraints = { video: true };
+
+        const localVideo = document.getElementById('localVideo');
+
+        socket.on('connect', () => {
+            socket.emit('join', { id: socket.id });
+        });
+
+        socket.on('offer', async (data) => {
+            if (data.to !== socket.id) return;
+            peerConnection = new RTCPeerConnection(servers);
+            peerConnection.ontrack = (event) => {
+                localVideo.srcObject = event.streams[0];
+            };
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('candidate', {
+                        candidate: event.candidate,
+                        to: data.from
+                    });
+                }
+            };
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            socket.emit('answer', {
+                answer: answer,
+                to: data.from
+            });
+        });
+
+        socket.on('answer', async (data) => {
+            if (data.to !== socket.id) return;
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+        });
+
+        socket.on('candidate', async (data) => {
+            if (data.to !== socket.id) return;
+            await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+        });
+
+        navigator.mediaDevices.getUserMedia(constraints)
             .then(stream => {
-                video.srcObject = stream;
-                video.play();
+                localStream = stream;
+                localVideo.srcObject = stream;
 
-                const mediaRecorder = new MediaRecorder(stream);
-                mediaRecorder.ondataavailable = function(event) {
-                    if (event.data.size > 0) {
-                        const formData = new FormData();
-                        formData.append('frame', event.data, 'frame.jpg');
-                        fetch(serverUrl, {
-                            method: 'POST',
-                            body: event.data
-                        });
-                    }
-                };
-                mediaRecorder.start(100); // Send data every 100ms
+                socket.on('update_clients', (clients) => {
+                    clients.forEach(client => {
+                        if (client.id !== socket.id) {
+                            peerConnection = new RTCPeerConnection(servers);
+                            peerConnection.addStream(localStream);
+                            peerConnection.onicecandidate = (event) => {
+                                if (event.candidate) {
+                                    socket.emit('candidate', {
+                                        candidate: event.candidate,
+                                        to: client.id
+                                    });
+                                }
+                            };
+                            peerConnection.ontrack = (event) => {
+                                // Handle incoming stream if needed
+                            };
+                            peerConnection.createOffer()
+                                .then(offer => peerConnection.setLocalDescription(offer))
+                                .then(() => {
+                                    socket.emit('offer', {
+                                        offer: peerConnection.localDescription,
+                                        to: client.id
+                                    });
+                                });
+                        }
+                    });
+                });
             })
             .catch(error => console.error('Error accessing media devices.', error));
     </script>
