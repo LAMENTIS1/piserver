@@ -1,9 +1,5 @@
-#Modified by smartbuilds.io
-#Date: 27.09.20
-#Desc: This script uses the laptop's built-in camera instead of the Pi camera.
-
+# camera.py
 import cv2 as cv
-import imutils
 import time
 from datetime import datetime
 import numpy as np
@@ -14,6 +10,7 @@ class VideoCamera(object):
         self.flip = flip  # Flip frame vertically
         self.file_type = file_type  # Image type, e.g., .jpg
         self.photo_string = photo_string  # Name to save the photo
+        self.previous_frame = None  # Initialize previous frame
         time.sleep(2.0)  # Allow the camera sensor to warm up
 
     def __del__(self):
@@ -27,13 +24,19 @@ class VideoCamera(object):
     def get_frame(self):
         ret, frame = self.vs.read()  # Read a frame from the camera
         if not ret:
-            return None
+            if self.previous_frame is not None:
+                return self.previous_frame.tobytes()  # Return the previous frame if available
+            else:
+                # Return a placeholder image if no previous frame is available
+                placeholder = np.zeros((480, 640, 3), dtype=np.uint8)
+                ret, jpeg = cv.imencode(self.file_type, placeholder)
+                return jpeg.tobytes()
+
         frame = self.flip_if_needed(frame)  # Flip the frame if needed
         ret, jpeg = cv.imencode(self.file_type, frame)
-        self.previous_frame = jpeg
+        self.previous_frame = jpeg  # Save the current frame as previous frame
         return jpeg.tobytes()
 
-    # Take a photo, called by camera button
     def take_picture(self):
         ret, frame = self.vs.read()  # Capture a frame
         if not ret:
