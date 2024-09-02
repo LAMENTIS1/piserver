@@ -2,3 +2,5 @@ Flask
 opencv-python
 imutils
 numpy
+gunicorn 
+
