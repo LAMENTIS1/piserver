@@ -3,18 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Client View</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>WebRTC Client</title>
 </head>
 <body>
-    <h1>Live Webcam Feed</h1>
-    <img id="feed" style="width: 100%;">
-
+    <h1>WebRTC Client</h1>
+    <video id="remoteVideo" autoplay></video>
+    <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
     <script>
-        const feed = document.getElementById('feed');
-        const serverUrl = '/stream_feed';  // Relative URL for the streaming endpoint
+        const socket = io();
+        const remoteVideo = document.getElementById('remoteVideo');
 
-        feed.src = serverUrl;
+        let peerConnection;
+        const servers = null; // Use default STUN/TURN servers
+
+        socket.on('connect', () => {
+            socket.emit('join', { id: socket.id });
+        });
+
+        socket.on('offer', async (data) => {
+            if (data.to !== socket.id) return;
+            peerConnection = new RTCPeerConnection(servers);
+            peerConnection.ontrack = (event) => {
+                remoteVideo.srcObject = event.streams[0];
+            };
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('candidate', {
+                        candidate: event.candidate,
+                        to: data.from
+                    });
+                }
+            };
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            socket.emit('answer', {
+                answer: answer,
+                to: data.from
+            });
+        });
+
+        socket.on('answer', async (data) => {
+            if (data.to !== socket.id) return;
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+        });
+
+        socket.on('candidate', async (data) => {
+            if (data.to !== socket.id) return;
+            await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+        });
     </script>
 </body>
 </html>
