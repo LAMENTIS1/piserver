@@ -11,7 +11,7 @@
     <video id="video" autoplay></video>
     <script>
         const video = document.getElementById('video');
-        const serverUrl = 'https://piserver-i952.onrender.com/video_feed';  // Updated URL
+        const serverUrl = '/video_feed';  // Relative URL for the server endpoint
 
         navigator.mediaDevices.getUserMedia({ video: true })
             .then(stream => {
@@ -25,7 +25,7 @@
                         formData.append('frame', event.data, 'frame.jpg');
                         fetch(serverUrl, {
                             method: 'POST',
-                            body: formData
+                            body: event.data
                         });
                     }
                 };
