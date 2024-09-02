@@ -1,42 +1,34 @@
-from flask import Flask, render_template, Response, jsonify, url_for
-from camera import VideoCamera
-
-pi_camera = VideoCamera(flip=False)  # Use the laptop's built-in camera
+from flask import Flask, request, render_template, Response
+import threading
+import queue
 
 app = Flask(__name__)
 
+# Queue to hold frames from the client
+frame_queue = queue.Queue(maxsize=10)
+
 @app.route('/')
 def index():
-    # Home page providing a link to the live stream
-    stream_url = url_for('video_feed')
-    return render_template('index.html', stream_url=stream_url)
+    return render_template('index.html')
 
-def gen(camera):
-    # Get camera frame
-    while True:
-        frame = camera.get_frame()
-        if frame is None:
-            continue
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
-
-@app.route('/video_feed')
+@app.route('/video_feed', methods=['POST'])
 def video_feed():
-    # Route to serve the video feed
-    return Response(gen(pi_camera),
+    if request.method == 'POST':
+        # Get the video frame from the request
+        frame = request.data
+        frame_queue.put(frame)
+        return 'Frame received', 200
+
+@app.route('/stream_feed')
+def stream_feed():
+    def generate_frames():
+        while True:
+            if not frame_queue.empty():
+                frame = frame_queue.get()
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+    return Response(generate_frames(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
-@app.route('/api/live_stream')
-def get_live_stream_link():
-    # API route to get the live stream link
-    stream_url = url_for('video_feed', _external=True)
-    return jsonify({"live_stream_url": stream_url})
-
-@app.route('/picture')
-def take_picture():
-    # Route to take a picture
-    pi_camera.take_picture()
-    return "Photo taken"
-
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(host='0.0.0.0', port=5000)
