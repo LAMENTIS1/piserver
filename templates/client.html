@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client View</title>
+</head>
+<body>
+    <h1>Live Webcam Feed</h1>
+    <img id="feed" style="width: 100%;">
+
+    <script>
+        // URL of the Flask server
+        const serverUrl = 'http://<server_ip>:5000/stream_feed';
+
+        // Get the feed element
+        const feed = document.getElementById('feed');
+
+        // Set the source of the feed element to the server URL
+        feed.src = serverUrl;
+    </script>
+</body>
+</html>
