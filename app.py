@@ -1,5 +1,4 @@
 from flask import Flask, request, render_template, Response
-import threading
 import queue
 
 app = Flask(__name__)
@@ -14,7 +13,6 @@ def index():
 @app.route('/video_feed', methods=['POST'])
 def video_feed():
     if request.method == 'POST':
-        # Get the video frame from the request
         frame = request.data
         frame_queue.put(frame)
         return 'Frame received', 200
