@@ -1,19 +1,18 @@
-# main.py
-# Import the necessary packages
-from flask import Flask, render_template, Response
+from flask import Flask, render_template, Response, jsonify, url_for
 from camera import VideoCamera
 
-pi_camera = VideoCamera(flip=False)  # flip pi camera if upside down
+pi_camera = VideoCamera(flip=False)  # Use the laptop's built-in camera
 
-# App Globals (do not edit)
 app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return render_template('index.html')  # you can customize index.html here
+    # Home page providing a link to the live stream
+    stream_url = url_for('video_feed')
+    return render_template('index.html', stream_url=stream_url)
 
 def gen(camera):
-    # get camera frame
+    # Get camera frame
     while True:
         frame = camera.get_frame()
         if frame is None:
@@ -23,14 +22,21 @@ def gen(camera):
 
 @app.route('/video_feed')
 def video_feed():
+    # Route to serve the video feed
     return Response(gen(pi_camera),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
-# Take a photo when pressing the camera button
+@app.route('/api/live_stream')
+def get_live_stream_link():
+    # API route to get the live stream link
+    stream_url = url_for('video_feed', _external=True)
+    return jsonify({"live_stream_url": stream_url})
+
 @app.route('/picture')
 def take_picture():
+    # Route to take a picture
     pi_camera.take_picture()
-    return "None"
+    return "Photo taken"
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=False)  # run the Flask app
+    app.run(host='0.0.0.0', debug=False)
